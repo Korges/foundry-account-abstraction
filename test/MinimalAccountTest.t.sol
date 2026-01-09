@@ -6,13 +6,16 @@ import {MinimalAccount} from "src/ethereum/MinimalAccount.sol";
 import {DeployMinimal} from "script/DeployMinimal.s.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {console} from "forge-std/console.sol";
 
 contract MinimalAccountTest is Test {
     HelperConfig helperConfig;
     MinimalAccount minimalAccount;
     ERC20Mock usdc;
 
-    uint256 constant AMOUNT = 1e18;
+    address randomuser = makeAddr("randomUser");
+
+    uint256 constant AMOUNT = 8e18;
 
     function setUp() public {
         DeployMinimal deployer = new DeployMinimal();
@@ -37,5 +40,17 @@ contract MinimalAccountTest is Test {
 
         // Assert
         assertEq(usdc.balanceOf(address(minimalAccount)), AMOUNT);
+    }
+
+    function testNonOwnerCannotExecuteCommands() public {
+        // Arrange
+        assertEq(usdc.balanceOf(address(minimalAccount)), 0);
+        address dest = address(usdc);
+        uint256 value = 0;
+        bytes memory functionData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
+        // Act
+        vm.prank(randomuser);
+        vm.expectRevert(MinimalAccount.MinimalAccount__NotFromEntryPointOrOwner.selector);
+        minimalAccount.execute(dest, value, functionData);
     }
 }
